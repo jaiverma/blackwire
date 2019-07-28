@@ -33,3 +33,22 @@
 
 
 usb.darwin.location_id==0x14100000
+
+
+phone on
+08 02
+
+phone off
+08 00
+
+mute toggle when call is on
+08 03 08 02 1f 00 1f 01
+
+mute toggle when call is off
+0x08, 0x01, 0x08, 0x00, 0x1f, 0x00, 0x1f, 0x01
+
+vol up
+01 01 01 00 01 01 01 00
+
+vol down
+01 02 01 00 01 02 01 00
