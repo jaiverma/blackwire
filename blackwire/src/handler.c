@@ -27,6 +27,9 @@ unsigned char *ops[] = {
 int op_sizes[] = { 2, 2, 8, 8, 8, 8 };
 
 void handle_request(struct libusb_transfer *transfer) {
+    struct libusb_transfer *t = (struct libusb_transfer*)transfer->user_data;
+    libusb_submit_transfer(t);
+
     for (int i = 0; i < transfer->actual_length; i++)
         buffer[buf_idx + i] = transfer->buffer[i];
     buf_idx += transfer->actual_length;

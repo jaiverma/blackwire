@@ -10,6 +10,8 @@ struct libusb_context *ctx = NULL;
 struct libusb_device_handle *blackwire = NULL;
 struct libusb_transfer *transfer_in = NULL;
 
+int flag = 1;
+
 void event_loop();
 void sighandler(int);
 
@@ -70,9 +72,22 @@ int main() {
 
     fprintf(stdout, "[*] starting event loop\n\n");
     event_loop();
-
+    libusb_handle_events_completed(ctx, NULL);
     libusb_free_transfer(transfer_in);
-    libusb_release_interface(blackwire, INTERFACE_NUM);
+
+
+    r = libusb_release_interface(blackwire, INTERFACE_NUM);
+    if (r < 0)
+        fprintf(stderr, "[-] release interface failed\n");
+    else
+        fprintf(stdout, "[+] release interface success\n");
+
+    r = libusb_attach_kernel_driver(blackwire, INTERFACE_NUM);
+    if (r < 0)
+        fprintf(stderr, "[-] kernel driver attach failed\n");
+    else
+        fprintf(stdout, "[+] kernel driver attach success\n");
+
     libusb_close(blackwire);
     libusb_exit(ctx);
     return 0;
@@ -83,28 +98,36 @@ void event_loop() {
     unsigned char data[8];
     memset(data, 0, sizeof(data));
 
-    while (1) {
-        libusb_fill_interrupt_transfer(
+    libusb_fill_interrupt_transfer(
                 transfer_in,
                 blackwire,
                 ENDPOINT_ADDR,
                 data,
                 sizeof(data),
                 handle_request,
-                NULL,
+                (void*)transfer_in,
                 0
                 );
 
-        libusb_submit_transfer(transfer_in);
-        libusb_handle_events(ctx);
+    libusb_submit_transfer(transfer_in);
+
+    while (flag) {
+        int r = libusb_handle_events_completed(ctx, NULL);
+        if (r < 0) {
+            fprintf(stderr, "[-] handle events failed\n");
+            break;
+        }
+    }
+
+    if (transfer_in) {
+        int r = libusb_cancel_transfer(transfer_in);
+        if (r == 0)
+            fprintf(stdout, "[*] transfer cancel success\n");
     }
 }
 
 
 void sighandler(int signum) {
     fprintf(stdout, "[*] signal handler called (%d)\n", signum);
-    libusb_free_transfer(transfer_in);
-    libusb_release_interface(blackwire, INTERFACE_NUM);
-    libusb_close(blackwire);
-    libusb_exit(ctx);
+    flag = 0;
 }
