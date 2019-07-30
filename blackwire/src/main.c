@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/time.h>
 
 #include "libusb.h"
 #include "handler.h"
@@ -73,8 +74,6 @@ int main() {
     fprintf(stdout, "[*] starting event loop\n\n");
     event_loop();
     libusb_handle_events_completed(ctx, NULL);
-    libusb_free_transfer(transfer_in);
-
 
     r = libusb_release_interface(blackwire, INTERFACE_NUM);
     if (r < 0)
@@ -88,8 +87,10 @@ int main() {
     else
         fprintf(stdout, "[+] kernel driver attach success\n");
 
+    fprintf(stdout, "[*] cleaning up...\n");
     libusb_close(blackwire);
     libusb_exit(ctx);
+
     return 0;
 }
 
@@ -112,7 +113,10 @@ void event_loop() {
     libusb_submit_transfer(transfer_in);
 
     while (flag) {
-        int r = libusb_handle_events_completed(ctx, NULL);
+        struct timeval tv;
+        tv.tv_sec = 0;
+        tv.tv_usec = 30000;
+        int r = libusb_handle_events_timeout_completed(ctx, &tv, NULL);
         if (r < 0) {
             fprintf(stderr, "[-] handle events failed\n");
             break;
@@ -124,8 +128,8 @@ void event_loop() {
         if (r == 0)
             fprintf(stdout, "[*] transfer cancel success\n");
     }
+    libusb_free_transfer(transfer_in);
 }
-
 
 void sighandler(int signum) {
     fprintf(stdout, "[*] signal handler called (%d)\n", signum);
