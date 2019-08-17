@@ -6,6 +6,7 @@
 #include "libusb.h"
 #include "handler.h"
 #include "blackwire.h"
+#include "mq.h"
 
 struct libusb_context *ctx = NULL;
 struct libusb_device_handle *blackwire = NULL;
@@ -71,9 +72,18 @@ int main() {
     sigaction(SIGTERM, &sigact, NULL);
     sigaction(SIGQUIT, &sigact, NULL);
 
+    // init zeromq
+    r = init_zeromq();
+    if (r != 0)
+        fprintf(stderr, "[-] zeromq init failed\n");
+    else
+        fprintf(stdout, "[+] zeromq init success\n");
+
     fprintf(stdout, "[*] starting event loop\n\n");
     event_loop();
     libusb_handle_events_completed(ctx, NULL);
+
+    deinit_zeromq();
 
     r = libusb_release_interface(blackwire, INTERFACE_NUM);
     if (r < 0)
